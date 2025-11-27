@@ -1,1 +1,7 @@
 notes.txt
+token.json
+.env
+fly.toml
+.air.toml
+node_modules/
+tmp

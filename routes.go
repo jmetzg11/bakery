@@ -16,7 +16,8 @@ func (app *application) routes(prod bool) http.Handler {
 	}
 
 	mux.HandleFunc("GET /{$}", app.home)
-
+	mux.HandleFunc("POST /make_report", app.makeReport)
+	mux.HandleFunc("GET /reports", app.showReports)
 	return rateLimit(mux)
 
 }

@@ -14,7 +14,7 @@ import (
 type application struct {
 	templateCache  map[string]*template.Template
 	sheetsServices *sheets.Service
-	sheetId        string
+	sheetID        string
 }
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	app := &application{
 		templateCache:  newTemplateCache(),
 		sheetsServices: mustSheetsService(),
-		sheetId:        mustGetenv("SPREADSHEET_ID"),
+		sheetID:        mustGetenv("SPREADSHEET_ID"),
 	}
 
 	srv := &http.Server{

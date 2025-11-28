@@ -26,18 +26,24 @@ func newTemplateCache() map[string]*template.Template {
 
 	funcMap := template.FuncMap{
 		"formatMoney": func(f float64) string {
-			intPart := []byte(fmt.Sprintf("$%.0f", f))
+			// Format the integer part with commas
+			intPart := int(f)
+			cents := int((f - float64(intPart)) * 100)
 
+			// Convert integer to string with commas
+			intStr := fmt.Sprintf("%d", intPart)
 			var result []byte
-			numDigits := len(intPart) - 1
-			for i, digit := range intPart {
-				if i > 1 && (numDigits-(i-1))%3 == 0 {
+			numDigits := len(intStr)
+
+			for i, digit := range intStr {
+				if i > 0 && (numDigits-i)%3 == 0 {
 					result = append(result, ',')
 				}
-				result = append(result, digit)
+				result = append(result, byte(digit))
 			}
 
-			return string(result)
+			// Add cents
+			return fmt.Sprintf("€%s.%02d", string(result), cents)
 		},
 	}
 

@@ -206,10 +206,46 @@ func (app *application) makeReport(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/reports", http.StatusSeeOther)
 
 }
 
+type DailyReport struct {
+	Date       string
+	TotalCost  float64
+}
+
 func (app *application) showReports(w http.ResponseWriter, r *http.Request) {
-	app.render(w, http.StatusOK, "reports.html", nil)
+	// Read all data from Order Items sheet (skip header row)
+	readRange := "Order Items!A2:D"
+	resp, err := app.sheetsServices.Spreadsheets.Values.Get(app.sheetID, readRange).Do()
+	if err != nil {
+		log.Printf("failed to read order items: %v", err)
+		http.Error(w, "failed to read order items", http.StatusInternalServerError)
+		return
+	}
+
+	// Group by date and sum costs
+	dailyTotals := make(map[string]float64)
+	for _, row := range resp.Values {
+		if len(row) >= 4 {
+			date := fmt.Sprintf("%v", row[0])
+			cost, _ := strconv.ParseFloat(fmt.Sprintf("%v", row[3]), 64)
+			dailyTotals[date] += cost
+		}
+	}
+
+	// Convert map to slice for template
+	var reports []DailyReport
+	for date, total := range dailyTotals {
+		reports = append(reports, DailyReport{
+			Date:      date,
+			TotalCost: round(total),
+		})
+	}
+
+	data := map[string]any{
+		"Reports": reports,
+	}
+	app.render(w, http.StatusOK, "reports.html", data)
 }

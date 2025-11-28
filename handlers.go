@@ -6,6 +6,9 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"time"
+
+	"google.golang.org/api/sheets/v4"
 )
 
 func (app *application) tester(w http.ResponseWriter, r *http.Request) {
@@ -48,6 +51,11 @@ type ItemCost struct {
 	TotalSpent float64
 }
 
+type IngredientCost struct {
+	Quantity   int
+	TotalSpend float64
+}
+
 func parseQuantity(quantityStr, unit string) int {
 	val, _ := strconv.ParseFloat(quantityStr, 64)
 
@@ -69,6 +77,19 @@ func parsePricePerSmallestUnit(priceStr, unit string) float64 {
 		return price / 1000.0
 	default:
 		return price
+	}
+}
+
+func round(price float64) float64 {
+	return math.Round(price*100) / 100
+}
+
+func convertToOriginalUnit(quantity int, unit string) float64 {
+	switch unit {
+	case "kg", "L":
+		return float64(quantity) / 1000.0
+	default:
+		return float64(quantity) // g, ml, pcs
 	}
 }
 
@@ -102,6 +123,7 @@ func (app *application) makeReport(w http.ResponseWriter, r *http.Request) {
 
 	// Get Ingredients with prices
 	ingredientPrices := make(map[string]float64)
+	ingredientUnits := make(map[string]string)
 	for _, row := range resp.ValueRanges[1].Values {
 		if len(row) > 0 {
 			ingredient := fmt.Sprintf("%v", row[0])
@@ -109,23 +131,78 @@ func (app *application) makeReport(w http.ResponseWriter, r *http.Request) {
 			price := fmt.Sprintf("%v", row[2])
 			pricefloat := parsePricePerSmallestUnit(price, unit)
 			ingredientPrices[ingredient] = pricefloat
+			ingredientUnits[ingredient] = unit
 		}
 	}
 
-	// Get price for each item
-	itemCosts := make(map[string]ItemCost)
+	currentDate := time.Now().Format("2006/01/02")
+
+	// Calculate costs and build rows for sheets
+	var itemRows [][]any
+	ingredientCosts := make(map[string]IngredientCost)
+
 	for itemName, values := range r.Form {
 		count, _ := strconv.Atoi(values[0])
+		if count == 0 {
+			continue
+		}
 
 		totalCost := 0.0
 		for _, ingredient := range items[itemName] {
 			price := ingredientPrices[ingredient.Name]
-			cost := float64(ingredient.Quantity) * price
+			cost := round(float64(ingredient.Quantity) * price * float64(count))
+
+			currentIngredientCost := ingredientCosts[ingredient.Name]
+			currentIngredientCost.TotalSpend = round(currentIngredientCost.TotalSpend + cost)
+			currentIngredientCost.Quantity += ingredient.Quantity * count
+			ingredientCosts[ingredient.Name] = currentIngredientCost
+
 			totalCost += cost
 		}
-		itemCosts[itemName] = ItemCost{
-			Count:      count,
-			TotalSpent: math.Round(totalCost*float64(count)*100) / 100,
+
+		// Add row directly to itemRows
+		itemRows = append(itemRows, []any{currentDate, itemName, count, round(totalCost)})
+	}
+
+	// Build ingredient rows
+	var ingredientRows [][]any
+	for ingredientName, ingredientCost := range ingredientCosts {
+		originalQuantity := convertToOriginalUnit(ingredientCost.Quantity, ingredientUnits[ingredientName])
+		ingredientRows = append(ingredientRows, []any{
+			currentDate,
+			ingredientName,
+			originalQuantity,
+			ingredientCost.TotalSpend,
+		})
+	}
+
+	// Write to Order_Items sheet
+	if len(itemRows) > 0 {
+		itemRange := "Order Items!A:D"
+		itemValueRange := &sheets.ValueRange{
+			Values: itemRows,
+		}
+		_, err = app.sheetsServices.Spreadsheets.Values.Append(app.sheetID, itemRange, itemValueRange).
+			ValueInputOption("RAW").Do()
+		if err != nil {
+			log.Printf("failed to write to Order_Items: %v", err)
+			http.Error(w, "failed to write order items", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Write to Order_Ingredients sheet
+	if len(ingredientRows) > 0 {
+		ingredientRange := "Order Ingredients!A:D"
+		ingredientValueRange := &sheets.ValueRange{
+			Values: ingredientRows,
+		}
+		_, err = app.sheetsServices.Spreadsheets.Values.Append(app.sheetID, ingredientRange, ingredientValueRange).
+			ValueInputOption("RAW").Do()
+		if err != nil {
+			log.Printf("failed to write to Order_Ingredients: %v", err)
+			http.Error(w, "failed to write order ingredients", http.StatusInternalServerError)
+			return
 		}
 	}
 

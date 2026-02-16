@@ -1,0 +1,65 @@
+{% extends "core/base.html" %}
+{% block title %}Bakery - Home{% endblock %}
+{% block content %}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div>
+        <h2 class="text-xl font-bold text-blue-900 mb-4">Latest Ingredient Orders</h2>
+        {% if recent_orders %}
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden">
+            <thead class="bg-blue-50">
+                <tr>
+                    <th class="text-left p-3">Ingredient</th>
+                    <th class="text-left p-3">Quantity</th>
+                    <th class="text-left p-3">Cost</th>
+                    <th class="text-left p-3">Total</th>
+                    <th class="text-left p-3">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in recent_orders %}
+                <tr class="border-t border-gray-200">
+                    <td class="p-3">{{ order.ingredient.name }}</td>
+                    <td class="p-3">{{ order.quantity }}</td>
+                    <td class="p-3">&euro;{{ order.cost }}</td>
+                    <td class="p-3">&euro;{{ order.total }}</td>
+                    <td class="p-3">{{ order.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500">No ingredient orders yet.</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <h2 class="text-xl font-bold text-blue-900 mb-4">Latest Sales</h2>
+        {% if recent_sales %}
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden">
+            <thead class="bg-blue-50">
+                <tr>
+                    <th class="text-left p-3">Item</th>
+                    <th class="text-left p-3">Quantity</th>
+                    <th class="text-left p-3">Price</th>
+                    <th class="text-left p-3">Total</th>
+                    <th class="text-left p-3">Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in recent_sales %}
+                <tr class="border-t border-gray-200">
+                    <td class="p-3">{{ sale.item.name }}</td>
+                    <td class="p-3">{{ sale.quantity }}</td>
+                    <td class="p-3">&euro;{{ sale.price }}</td>
+                    <td class="p-3">&euro;{{ sale.total }}</td>
+                    <td class="p-3">{{ sale.date }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500">No sales recorded yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

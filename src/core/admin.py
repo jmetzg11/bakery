@@ -6,7 +6,6 @@ from .models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold
 admin.site.unregister(User)
 admin.site.unregister(Group)
 
-
 class ItemIngredientInline(admin.TabularInline):
     model = ItemIngredient
     extra = 1

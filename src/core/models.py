@@ -58,7 +58,7 @@ class ItemIngredient(models.Model):
 class IngredientOrder(models.Model):
     date = models.DateField()
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    quantity = models.IntegerField()
     cost = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):

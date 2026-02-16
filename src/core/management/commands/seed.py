@@ -1,7 +1,6 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
-from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
 from core.models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold
@@ -11,10 +10,6 @@ class Command(BaseCommand):
     help = 'Seed database with play data including historical price changes'
 
     def handle(self, *args, **options):
-        if not User.objects.filter(username='admin').exists():
-            User.objects.create_superuser('admin', '', 'admin')
-            self.stdout.write('Created superuser: admin / admin')
-
         self.stdout.write('Clearing existing data...')
         ItemSold.objects.all().delete()
         IngredientOrder.objects.all().delete()

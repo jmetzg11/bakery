@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Bakery{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background-color: rgba(0,0,0,0.05); }
+        th.sortable::after { content: ' \2195'; opacity: 0.3; }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('th.sortable').forEach(function(th) {
+                th.addEventListener('click', function() {
+                    var table = th.closest('table');
+                    var tbody = table.querySelector('tbody');
+                    var rows = Array.from(tbody.querySelectorAll('tr'));
+                    var idx = Array.from(th.parentNode.children).indexOf(th);
+                    var asc = th.dataset.sort !== 'asc';
+                    th.parentNode.querySelectorAll('th').forEach(function(h) { delete h.dataset.sort; });
+                    th.dataset.sort = asc ? 'asc' : 'desc';
+                    rows.sort(function(a, b) {
+                        var aVal = a.children[idx].textContent.trim().replace('$', '');
+                        var bVal = b.children[idx].textContent.trim().replace('$', '');
+                        var aDate = Date.parse(aVal), bDate = Date.parse(bVal);
+                        if (!isNaN(aDate) && !isNaN(bDate)) return asc ? aDate - bDate : bDate - aDate;
+                        var aNum = parseFloat(aVal), bNum = parseFloat(bVal);
+                        if (!isNaN(aNum) && !isNaN(bNum)) return asc ? aNum - bNum : bNum - aNum;
+                        return asc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                    });
+                    rows.forEach(function(row) { tbody.appendChild(row); });
+                });
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <nav class="bg-red-700 text-white p-4 shadow-md">
+        <div class="max-w-5xl mx-auto flex items-center gap-6">
+            <a href="{% url 'core:home' %}" class="text-xl font-bold">Bakery</a>
+            <a href="{% url 'core:ingredients' %}" class="hover:text-red-200">Ingredients</a>
+            <a href="{% url 'core:sales' %}" class="hover:text-red-200">Sales</a>
+            <a href="{% url 'core:reports' %}" class="hover:text-red-200">Reports</a>
+            {% if user.is_authenticated %}
+            <a href="/admin/" class="hover:text-red-200 ml-auto">Admin</a>
+            {% endif %}
+        </div>
+    </nav>
+    <main class="max-w-5xl mx-auto p-6">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

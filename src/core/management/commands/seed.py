@@ -20,37 +20,37 @@ class Command(BaseCommand):
         # --- Ingredients (initial prices) ---
         flour = Ingredient.objects.create(
             name='Flour', measurement_type='kg',
-            measurement_amount=Decimal('1.00'), cost=Decimal('3.00'),
+            measurement_amount=1, cost=Decimal('3.00'),
         )
         sugar = Ingredient.objects.create(
             name='Sugar', measurement_type='kg',
-            measurement_amount=Decimal('1.00'), cost=Decimal('4.00'),
+            measurement_amount=1, cost=Decimal('4.00'),
         )
         butter = Ingredient.objects.create(
             name='Butter', measurement_type='g',
-            measurement_amount=Decimal('500.00'), cost=Decimal('5.00'),
+            measurement_amount=500, cost=Decimal('5.00'),
         )
         eggs = Ingredient.objects.create(
             name='Eggs', measurement_type='units',
-            measurement_amount=Decimal('12.00'), cost=Decimal('4.50'),
+            measurement_amount=12, cost=Decimal('4.50'),
         )
         cocoa = Ingredient.objects.create(
             name='Cocoa Powder', measurement_type='g',
-            measurement_amount=Decimal('250.00'), cost=Decimal('6.00'),
+            measurement_amount=250, cost=Decimal('6.00'),
         )
         cream_cheese = Ingredient.objects.create(
             name='Cream Cheese', measurement_type='g',
-            measurement_amount=Decimal('250.00'), cost=Decimal('3.50'),
+            measurement_amount=250, cost=Decimal('3.50'),
         )
         vanilla = Ingredient.objects.create(
             name='Vanilla Extract', measurement_type='ml',
-            measurement_amount=Decimal('100.00'), cost=Decimal('8.00'),
+            measurement_amount=100, cost=Decimal('8.00'),
         )
 
         # --- Items ---
         chocolate_cake = Item.objects.create(
             name='Chocolate Cake', servings_per_unit=8,
-            price_per_unit=Decimal('32.00'), price_per_serving=Decimal('4.00'),
+            price_per_unit=Decimal('32.00'), price_per_serving=Decimal('5.00'),
         )
         ItemIngredient.objects.bulk_create([
             ItemIngredient(item=chocolate_cake, ingredient=flour, amount=Decimal('0.40'), measurement_type='kg'),
@@ -63,7 +63,7 @@ class Command(BaseCommand):
 
         cupcake = Item.objects.create(
             name='Cupcake', servings_per_unit=1,
-            price_per_unit=Decimal('3.50'), price_per_serving=Decimal('3.50'),
+            price_per_unit=Decimal('3.50'),
         )
         ItemIngredient.objects.bulk_create([
             ItemIngredient(item=cupcake, ingredient=flour, amount=Decimal('0.05'), measurement_type='kg'),
@@ -88,7 +88,7 @@ class Command(BaseCommand):
 
         cookies = Item.objects.create(
             name='Cookie', servings_per_unit=1,
-            price_per_unit=Decimal('2.00'), price_per_serving=Decimal('2.00'),
+            price_per_unit=Decimal('2.00'),
         )
         ItemIngredient.objects.bulk_create([
             ItemIngredient(item=cookies, ingredient=flour, amount=Decimal('0.03'), measurement_type='kg'),

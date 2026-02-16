@@ -6,8 +6,6 @@ MEASUREMENT_CHOICES = [
     ('kg', 'kilograms'),
     ('ml', 'milliliters'),
     ('l', 'liters'),
-    ('cups', 'cups'),
-    ('oz', 'ounces'),
     ('units', 'units'),
 ]
 
@@ -15,7 +13,7 @@ MEASUREMENT_CHOICES = [
 class Ingredient(models.Model):
     name = models.CharField(max_length=100)
     measurement_type = models.CharField(max_length=10, choices=MEASUREMENT_CHOICES)
-    measurement_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    measurement_amount = models.IntegerField()
     cost = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
@@ -26,7 +24,12 @@ class Item(models.Model):
     name = models.CharField(max_length=100)
     servings_per_unit = models.IntegerField(default=1)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
-    price_per_serving = models.DecimalField(max_digits=10, decimal_places=2)
+    price_per_serving = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.price_per_serving is None and self.servings_per_unit:
+            self.price_per_serving = round(self.price_per_unit / self.servings_per_unit, 2)
+        super().save(*args, **kwargs)
     ingredients = models.ManyToManyField(Ingredient, through='ItemIngredient')
 
     def ingredient_cost_per_unit(self):
@@ -46,10 +49,18 @@ class Item(models.Model):
 
 
 class ItemIngredient(models.Model):
+    BASE_UNIT_MAP = {'kg': 'g', 'g': 'g', 'l': 'ml', 'ml': 'ml', 'units': 'units'}
+
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    measurement_type = models.CharField(max_length=10, choices=MEASUREMENT_CHOICES)
+    measurement_type = models.CharField(max_length=10, choices=MEASUREMENT_CHOICES, blank=True)
+
+    def save(self, *args, **kwargs):
+        self.measurement_type = self.BASE_UNIT_MAP.get(
+            self.ingredient.measurement_type, self.ingredient.measurement_type
+        )
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.item.name} - {self.ingredient.name} ({self.amount}{self.measurement_type})"

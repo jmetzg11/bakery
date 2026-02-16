@@ -1,23 +1,11 @@
+.PHONY: run stop
+
 run:
-	@echo "Starting Go backend with hot reloading..."
-	air
+	docker compose up -d
+	@until docker compose exec db pg_isready -U bakery > /dev/null 2>&1; do sleep 0.5; done
+	cd src && uv run python manage.py migrate
+	cd src && uv run python manage.py seed
+	cd src && uv run python manage.py runserver
 
-down:
-	@echo "Stopping Go backend..."
-	-pkill -f "tmp/main"
-	@echo "Cleaning up Go build artifacts..."
-	-rm -f tmp/main
-	@echo "Stopped successfully!"
-
-# run:
-# 	@echo "Building Tailwind CSS..."
-# 	npm run build:css
-# 	@echo "Starting Go backend with hot reloading..."
-# 	air
-
-# down:
-# 	@echo "Stopping Go backend..."
-# 	-pkill -f "tmp/main"
-# 	@echo "Cleaning up Go build artifacts..."
-# 	-rm -f tmp/main
-# 	@echo "Stopped successfully!"
+stop:
+	docker compose down -v

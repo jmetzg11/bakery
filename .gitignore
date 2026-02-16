@@ -1,7 +1,6 @@
 notes.txt
-token.json
 .env
-fly.toml
-.air.toml
-node_modules/
-tmp
+__pycache__/
+*.pyc
+.venv/
+db.sqlite3

@@ -1,0 +1,147 @@
+{% extends "core/base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-blue-900 mb-6">Reports</h1>
+
+<form method="post" class="bg-white rounded-lg shadow p-6 mb-8">
+    {% csrf_token %}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+        <div>
+            <h3 class="font-semibold text-blue-900 mb-2">Ingredient Orders</h3>
+            <div class="flex gap-4">
+                <div>
+                    <label for="ing_start_date" class="block text-sm text-gray-700 mb-1">Start</label>
+                    <input type="date" name="ing_start_date" id="ing_start_date"
+                           value="{{ ing_start_date|default:today }}"
+                           class="border border-gray-300 rounded px-3 py-2" required>
+                </div>
+                <div>
+                    <label for="ing_end_date" class="block text-sm text-gray-700 mb-1">End</label>
+                    <input type="date" name="ing_end_date" id="ing_end_date"
+                           value="{{ ing_end_date|default:today }}"
+                           class="border border-gray-300 rounded px-3 py-2" required>
+                </div>
+            </div>
+        </div>
+        <div>
+            <h3 class="font-semibold text-blue-900 mb-2">Sales</h3>
+            <div class="flex gap-4">
+                <div>
+                    <label for="sales_start_date" class="block text-sm text-gray-700 mb-1">Start</label>
+                    <input type="date" name="sales_start_date" id="sales_start_date"
+                           value="{{ sales_start_date|default:today }}"
+                           class="border border-gray-300 rounded px-3 py-2" required>
+                </div>
+                <div>
+                    <label for="sales_end_date" class="block text-sm text-gray-700 mb-1">End</label>
+                    <input type="date" name="sales_end_date" id="sales_end_date"
+                           value="{{ sales_end_date|default:today }}"
+                           class="border border-gray-300 rounded px-3 py-2" required>
+                </div>
+            </div>
+        </div>
+    </div>
+    <button type="submit" class="bg-red-700 text-white px-6 py-2 rounded hover:bg-red-800 transition">
+        Make Report
+    </button>
+</form>
+
+{% if has_report %}
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <div class="bg-white rounded-lg shadow p-4 text-center">
+        <p class="text-sm text-gray-500">Total Revenue</p>
+        <p class="text-2xl font-bold text-green-700">&euro;{{ total_revenue }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 text-center">
+        <p class="text-sm text-gray-500">Ingredient Costs</p>
+        <p class="text-2xl font-bold text-red-700">&euro;{{ total_ingredient_cost }}</p>
+    </div>
+    <div class="bg-white rounded-lg shadow p-4 text-center">
+        <p class="text-sm text-gray-500">Profit</p>
+        <p class="text-2xl font-bold {% if profit >= 0 %}text-green-700{% else %}text-red-700{% endif %}">&euro;{{ profit }}</p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div>
+        <h2 class="text-xl font-bold text-blue-900 mb-4">Items Sold</h2>
+        {% if sales %}
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden">
+            <thead class="bg-blue-50">
+                <tr>
+                    <th class="sortable text-left p-3">Item</th>
+                    <th class="sortable text-left p-3">Quantity</th>
+                    <th class="sortable text-left p-3">Revenue</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sales %}
+                <tr class="border-t border-gray-200">
+                    <td class="p-3">{{ s.item__name }}</td>
+                    <td class="p-3">{{ s.total_qty }}</td>
+                    <td class="p-3">&euro;{{ s.total_revenue }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500">No sales in this period.</p>
+        {% endif %}
+    </div>
+
+    <div>
+        <h2 class="text-xl font-bold text-blue-900 mb-4">Ingredients Ordered</h2>
+        {% if orders %}
+        <table class="w-full bg-white rounded-lg shadow overflow-hidden">
+            <thead class="bg-blue-50">
+                <tr>
+                    <th class="sortable text-left p-3">Ingredient</th>
+                    <th class="sortable text-left p-3">Quantity</th>
+                    <th class="sortable text-left p-3">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in orders %}
+                <tr class="border-t border-gray-200">
+                    <td class="p-3">{{ o.ingredient__name }}</td>
+                    <td class="p-3">{{ o.total_qty }}</td>
+                    <td class="p-3">&euro;{{ o.total_cost }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="text-gray-500">No ingredient orders in this period.</p>
+        {% endif %}
+    </div>
+</div>
+
+<h2 class="text-xl font-bold text-blue-900 mb-4">Ingredient Balance</h2>
+{% if ingredient_balance %}
+<table class="w-full bg-white rounded-lg shadow overflow-hidden mb-8">
+    <thead class="bg-blue-50">
+        <tr>
+            <th class="sortable text-left p-3">Ingredient</th>
+            <th class="sortable text-left p-3">Ordered</th>
+            <th class="sortable text-left p-3">Used</th>
+            <th class="sortable text-left p-3">Remaining</th>
+            <th class="text-left p-3">Unit</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for b in ingredient_balance %}
+        <tr class="border-t border-gray-200 {% if b.remaining < 0 %}bg-red-50{% endif %}">
+            <td class="p-3">{{ b.name }}</td>
+            <td class="p-3">{{ b.ordered }}</td>
+            <td class="p-3">{{ b.used }}</td>
+            <td class="p-3 {% if b.remaining < 0 %}text-red-700 font-bold{% endif %}">{{ b.remaining }}</td>
+            <td class="p-3">{{ b.unit }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray-500">No ingredient data for this period.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

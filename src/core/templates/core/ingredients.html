@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+{% block title %}Order Ingredients{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-blue-900 mb-6">Ingredients</h1>
+
+{% if user.is_authenticated %}
+<form method="post" class="bg-white rounded-lg shadow p-6 mb-8">
+    {% csrf_token %}
+    <div class="mb-4">
+        <label for="order_date" class="block text-sm font-medium text-gray-700 mb-1">Order Date</label>
+        <input type="date" name="order_date" id="order_date" value="{{ today }}"
+               class="border border-gray-300 rounded px-3 py-2" required>
+    </div>
+
+    <table class="w-full">
+        <thead class="bg-blue-50">
+            <tr>
+                <th class="text-left p-3">Ingredient</th>
+                <th class="text-left p-3">Unit</th>
+                <th class="text-left p-3">Cost per Unit</th>
+                <th class="text-left p-3">Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ingredient in ingredients %}
+            <tr class="border-t border-gray-200">
+                <td class="p-3">{{ ingredient.name }}</td>
+                <td class="p-3">{{ ingredient.measurement_amount }} {{ ingredient.get_measurement_type_display }}</td>
+                <td class="p-3">&euro;{{ ingredient.cost }}</td>
+                <td class="p-3">
+                    <input type="number" name="quantity_{{ ingredient.id }}"
+                           min="0" step="1" value="0"
+                           class="border border-gray-300 rounded px-2 py-1 w-24">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="mt-4 bg-red-700 text-white px-6 py-2 rounded hover:bg-red-800 transition">
+        Submit Order
+    </button>
+</form>
+{% endif %}
+
+<h2 class="text-xl font-bold text-blue-900 mb-4">Recent Purchases</h2>
+{% if past_orders %}
+<table class="w-full bg-white rounded-lg shadow overflow-hidden">
+    <thead class="bg-blue-50">
+        <tr>
+            <th class="sortable text-left p-3">Date</th>
+            <th class="sortable text-left p-3">Ingredient</th>
+            <th class="sortable text-left p-3">Quantity</th>
+            <th class="sortable text-left p-3">Cost</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for order in past_orders %}
+        <tr class="border-t border-gray-200">
+            <td class="p-3">{{ order.date }}</td>
+            <td class="p-3">{{ order.ingredient.name }}</td>
+            <td class="p-3">{{ order.quantity }}</td>
+            <td class="p-3">&euro;{{ order.cost }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray-500">No ingredient orders yet.</p>
+{% endif %}
+{% endblock %}

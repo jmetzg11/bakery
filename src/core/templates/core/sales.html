@@ -1,0 +1,71 @@
+{% extends "core/base.html" %}
+{% block title %}Record Sales{% endblock %}
+{% block content %}
+<h1 class="text-2xl font-bold text-blue-900 mb-6">Sales</h1>
+
+{% if user.is_authenticated %}
+<form method="post" class="bg-white rounded-lg shadow p-6 mb-8">
+    {% csrf_token %}
+    <div class="mb-4">
+        <label for="sale_date" class="block text-sm font-medium text-gray-700 mb-1">Sale Date</label>
+        <input type="date" name="sale_date" id="sale_date" value="{{ today }}"
+               class="border border-gray-300 rounded px-3 py-2" required>
+    </div>
+
+    <table class="w-full">
+        <thead class="bg-blue-50">
+            <tr>
+                <th class="text-left p-3">Item</th>
+                <th class="text-left p-3">Price per Serving</th>
+                <th class="text-left p-3">Quantity</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr class="border-t border-gray-200">
+                <td class="p-3">{{ item.name }}</td>
+                <td class="p-3">&euro;{{ item.price_per_serving }}</td>
+                <td class="p-3">
+                    <input type="number" name="quantity_{{ item.id }}"
+                           min="0" step="1" value="0"
+                           class="border border-gray-300 rounded px-2 py-1 w-24">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="submit" class="mt-4 bg-red-700 text-white px-6 py-2 rounded hover:bg-red-800 transition">
+        Record Sales
+    </button>
+</form>
+{% endif %}
+
+<h2 class="text-xl font-bold text-blue-900 mb-4">Recent Sales</h2>
+{% if past_sales %}
+<table class="w-full bg-white rounded-lg shadow overflow-hidden">
+    <thead class="bg-blue-50">
+        <tr>
+            <th class="sortable text-left p-3">Date</th>
+            <th class="sortable text-left p-3">Item</th>
+            <th class="sortable text-left p-3">Quantity</th>
+            <th class="sortable text-left p-3">Price</th>
+            <th class="sortable text-left p-3">Total</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sale in past_sales %}
+        <tr class="border-t border-gray-200">
+            <td class="p-3">{{ sale.date }}</td>
+            <td class="p-3">{{ sale.item.name }}</td>
+            <td class="p-3">{{ sale.quantity }}</td>
+            <td class="p-3">&euro;{{ sale.price }}</td>
+            <td class="p-3">&euro;{{ sale.total_revenue }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="text-gray-500">No sales recorded yet.</p>
+{% endif %}
+{% endblock %}

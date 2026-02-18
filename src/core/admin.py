@@ -4,15 +4,13 @@ from django.contrib import admin
 from django.contrib.auth.models import User, Group
 from django.utils.safestring import mark_safe
 
-from .models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold
+from .models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold, BASE_UNIT_MAP
 
 admin.site.unregister(User)
 admin.site.unregister(Group)
 
 admin.site.site_header = 'Bakery Admin'
 admin.site.site_url = '/'
-
-BASE_UNIT_MAP = {'kg': 'g', 'g': 'g', 'l': 'ml', 'ml': 'ml', 'units': 'units'}
 
 
 class ItemIngredientInline(admin.TabularInline):
@@ -35,7 +33,7 @@ class IngredientAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'servings_per_unit', 'price_per_unit', 'price_per_serving')
+    list_display = ('name', 'servings_per_unit', 'price_per_unit', 'price_per_serving', 'sold_by_slice')
     inlines = [ItemIngredientInline]
     change_form_template = 'admin/core/item/change_form.html'
 

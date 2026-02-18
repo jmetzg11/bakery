@@ -9,6 +9,28 @@ MEASUREMENT_CHOICES = [
     ('units', 'units'),
 ]
 
+BASE_MEASUREMENT_CHOICES = [
+    ('g', 'grams'),
+    ('ml', 'milliliters'),
+    ('units', 'units'),
+]
+
+CONVERSION_TO_BASE = {
+    'kg': 1000,
+    'g': 1,
+    'l': 1000,
+    'ml': 1,
+    'units': 1,
+}
+
+BASE_UNIT_MAP = {
+    'kg': 'g',
+    'g': 'g',
+    'l': 'ml',
+    'ml': 'ml',
+    'units': 'units',
+}
+
 
 class Ingredient(models.Model):
     name = models.CharField(max_length=100)
@@ -25,6 +47,7 @@ class Item(models.Model):
     servings_per_unit = models.IntegerField(default=1)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     price_per_serving = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    sold_by_slice = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
         if self.price_per_serving is None and self.servings_per_unit:
@@ -34,7 +57,10 @@ class Item(models.Model):
 
     def ingredient_cost_per_unit(self):
         total = sum(
-            (ii.amount / ii.ingredient.measurement_amount) * ii.ingredient.cost
+            ii.amount * ii.ingredient.cost / (
+                ii.ingredient.measurement_amount
+                * CONVERSION_TO_BASE[ii.ingredient.measurement_type]
+            )
             for ii in self.itemingredient_set.all()
         )
         return round(total, 2)
@@ -49,15 +75,13 @@ class Item(models.Model):
 
 
 class ItemIngredient(models.Model):
-    BASE_UNIT_MAP = {'kg': 'g', 'g': 'g', 'l': 'ml', 'ml': 'ml', 'units': 'units'}
-
     item = models.ForeignKey(Item, on_delete=models.CASCADE)
     ingredient = models.ForeignKey(Ingredient, on_delete=models.CASCADE)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    measurement_type = models.CharField(max_length=10, choices=MEASUREMENT_CHOICES, blank=True)
+    measurement_type = models.CharField(max_length=10, choices=BASE_MEASUREMENT_CHOICES)
 
     def save(self, *args, **kwargs):
-        self.measurement_type = self.BASE_UNIT_MAP.get(
+        self.measurement_type = BASE_UNIT_MAP.get(
             self.ingredient.measurement_type, self.ingredient.measurement_type
         )
         super().save(*args, **kwargs)

@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand
@@ -8,6 +8,11 @@ from core.models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemS
 
 class Command(BaseCommand):
     help = 'Seed database with play data including historical price changes'
+
+    def _create_recipe(self, item, ingredients):
+        """Create ItemIngredient records using .create() so save() runs."""
+        for ing, amount in ingredients:
+            ItemIngredient.objects.create(item=item, ingredient=ing, amount=amount)
 
     def handle(self, *args, **options):
         self.stdout.write('Clearing existing data...')
@@ -47,54 +52,56 @@ class Command(BaseCommand):
             measurement_amount=100, cost=Decimal('8.00'),
         )
 
-        # --- Items ---
+        # --- Items (amounts in base units: g, ml, units) ---
         chocolate_cake = Item.objects.create(
             name='Chocolate Cake', servings_per_unit=8,
             price_per_unit=Decimal('32.00'), price_per_serving=Decimal('5.00'),
+            sold_by_slice=True,
         )
-        ItemIngredient.objects.bulk_create([
-            ItemIngredient(item=chocolate_cake, ingredient=flour, amount=Decimal('0.40'), measurement_type='kg'),
-            ItemIngredient(item=chocolate_cake, ingredient=sugar, amount=Decimal('0.30'), measurement_type='kg'),
-            ItemIngredient(item=chocolate_cake, ingredient=butter, amount=Decimal('200.00'), measurement_type='g'),
-            ItemIngredient(item=chocolate_cake, ingredient=eggs, amount=Decimal('4.00'), measurement_type='units'),
-            ItemIngredient(item=chocolate_cake, ingredient=cocoa, amount=Decimal('80.00'), measurement_type='g'),
-            ItemIngredient(item=chocolate_cake, ingredient=vanilla, amount=Decimal('10.00'), measurement_type='ml'),
+        self._create_recipe(chocolate_cake, [
+            (flour, Decimal('400')),
+            (sugar, Decimal('300')),
+            (butter, Decimal('200')),
+            (eggs, Decimal('4')),
+            (cocoa, Decimal('80')),
+            (vanilla, Decimal('10')),
         ])
 
         cupcake = Item.objects.create(
             name='Cupcake', servings_per_unit=1,
             price_per_unit=Decimal('3.50'),
         )
-        ItemIngredient.objects.bulk_create([
-            ItemIngredient(item=cupcake, ingredient=flour, amount=Decimal('0.05'), measurement_type='kg'),
-            ItemIngredient(item=cupcake, ingredient=sugar, amount=Decimal('0.04'), measurement_type='kg'),
-            ItemIngredient(item=cupcake, ingredient=butter, amount=Decimal('30.00'), measurement_type='g'),
-            ItemIngredient(item=cupcake, ingredient=eggs, amount=Decimal('0.50'), measurement_type='units'),
-            ItemIngredient(item=cupcake, ingredient=vanilla, amount=Decimal('2.00'), measurement_type='ml'),
+        self._create_recipe(cupcake, [
+            (flour, Decimal('50')),
+            (sugar, Decimal('40')),
+            (butter, Decimal('30')),
+            (eggs, Decimal('0.50')),
+            (vanilla, Decimal('2')),
         ])
 
         cheesecake = Item.objects.create(
             name='Cheesecake', servings_per_unit=10,
             price_per_unit=Decimal('45.00'), price_per_serving=Decimal('4.50'),
+            sold_by_slice=True,
         )
-        ItemIngredient.objects.bulk_create([
-            ItemIngredient(item=cheesecake, ingredient=flour, amount=Decimal('0.15'), measurement_type='kg'),
-            ItemIngredient(item=cheesecake, ingredient=sugar, amount=Decimal('0.25'), measurement_type='kg'),
-            ItemIngredient(item=cheesecake, ingredient=butter, amount=Decimal('150.00'), measurement_type='g'),
-            ItemIngredient(item=cheesecake, ingredient=eggs, amount=Decimal('5.00'), measurement_type='units'),
-            ItemIngredient(item=cheesecake, ingredient=cream_cheese, amount=Decimal('500.00'), measurement_type='g'),
-            ItemIngredient(item=cheesecake, ingredient=vanilla, amount=Decimal('15.00'), measurement_type='ml'),
+        self._create_recipe(cheesecake, [
+            (flour, Decimal('150')),
+            (sugar, Decimal('250')),
+            (butter, Decimal('150')),
+            (eggs, Decimal('5')),
+            (cream_cheese, Decimal('500')),
+            (vanilla, Decimal('15')),
         ])
 
         cookies = Item.objects.create(
             name='Cookie', servings_per_unit=1,
             price_per_unit=Decimal('2.00'),
         )
-        ItemIngredient.objects.bulk_create([
-            ItemIngredient(item=cookies, ingredient=flour, amount=Decimal('0.03'), measurement_type='kg'),
-            ItemIngredient(item=cookies, ingredient=sugar, amount=Decimal('0.02'), measurement_type='kg'),
-            ItemIngredient(item=cookies, ingredient=butter, amount=Decimal('20.00'), measurement_type='g'),
-            ItemIngredient(item=cookies, ingredient=eggs, amount=Decimal('0.25'), measurement_type='units'),
+        self._create_recipe(cookies, [
+            (flour, Decimal('30')),
+            (sugar, Decimal('20')),
+            (butter, Decimal('20')),
+            (eggs, Decimal('0.25')),
         ])
 
         # --- Ingredient purchases (restocking) ---

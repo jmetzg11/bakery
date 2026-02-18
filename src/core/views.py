@@ -9,7 +9,15 @@ from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.views import View
 
-from .models import Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold
+from .dto import (
+    HomeContext, IngredientsContext, SalesContext, ReportContext,
+    IngredientBalance, UsageBreakdown,
+)
+from .forms import OrderDateForm, ReportDateForm, SaleDateForm
+from .models import (
+    Ingredient, IngredientOrder, Item, ItemIngredient, ItemSold,
+    CONVERSION_TO_BASE, BASE_UNIT_MAP,
+)
 
 
 class HomeView(View):
@@ -32,28 +40,27 @@ class HomeView(View):
             total=F('quantity') * F('price')
         ).order_by('item__name')
 
-        return render(request, 'core/home.html', {
-            'recent_orders': recent_orders,
-            'recent_sales': recent_sales,
-        })
+        ctx = HomeContext(
+            recent_orders=recent_orders,
+            recent_sales=recent_sales,
+        )
+        return render(request, 'core/home.html', vars(ctx))
 
 
 class IngredientsView(View):
     def get(self, request):
         past_orders = IngredientOrder.objects.select_related('ingredient').order_by('-date', '-id')[:20]
-        return render(request, 'core/ingredients.html', {
-            'ingredients': Ingredient.objects.all().order_by('name'),
-            'past_orders': past_orders,
-            'today': date.today().isoformat(),
-        })
+        ctx = IngredientsContext(
+            ingredients=Ingredient.objects.all().order_by('name'),
+            past_orders=past_orders,
+            today=date.today().isoformat(),
+        )
+        return render(request, 'core/ingredients.html', vars(ctx))
 
     @method_decorator(login_required)
     def post(self, request):
-        order_date_str = request.POST.get('order_date', '')
-        try:
-            order_date = date.fromisoformat(order_date_str)
-        except ValueError:
-            order_date = date.today()
+        form = OrderDateForm(request.POST)
+        form.is_valid()
 
         for ingredient in Ingredient.objects.all():
             raw_qty = request.POST.get(f'quantity_{ingredient.id}', '0')
@@ -63,7 +70,7 @@ class IngredientsView(View):
                 qty = 0
             if qty > 0:
                 IngredientOrder.objects.create(
-                    date=order_date,
+                    date=form.cleaned_data['order_date'],
                     ingredient=ingredient,
                     quantity=qty,
                     cost=ingredient.cost,
@@ -75,19 +82,17 @@ class IngredientsView(View):
 class SalesView(View):
     def get(self, request):
         past_sales = ItemSold.objects.select_related('item').order_by('-date', '-id')[:20]
-        return render(request, 'core/sales.html', {
-            'items': Item.objects.all().order_by('name'),
-            'past_sales': past_sales,
-            'today': date.today().isoformat(),
-        })
+        ctx = SalesContext(
+            items=Item.objects.all().order_by('name'),
+            past_sales=past_sales,
+            today=date.today().isoformat(),
+        )
+        return render(request, 'core/sales.html', vars(ctx))
 
     @method_decorator(login_required)
     def post(self, request):
-        sale_date_str = request.POST.get('sale_date', '')
-        try:
-            sale_date = date.fromisoformat(sale_date_str)
-        except ValueError:
-            sale_date = date.today()
+        form = SaleDateForm(request.POST)
+        form.is_valid()
 
         for item in Item.objects.all():
             raw_qty = request.POST.get(f'quantity_{item.id}', '0')
@@ -96,11 +101,12 @@ class SalesView(View):
             except (ValueError, TypeError):
                 qty = 0
             if qty > 0:
+                price = item.price_per_serving if item.sold_by_slice else item.price_per_unit
                 ItemSold.objects.create(
-                    date=sale_date,
+                    date=form.cleaned_data['sale_date'],
                     item=item,
                     quantity=qty,
-                    price=item.price_per_serving,
+                    price=price,
                 )
 
         return redirect('core:sales')
@@ -113,26 +119,12 @@ class ReportsView(View):
         })
 
     def post(self, request):
-        ing_start_str = request.POST.get('ing_start_date', '')
-        ing_end_str = request.POST.get('ing_end_date', '')
-        sales_start_str = request.POST.get('sales_start_date', '')
-        sales_end_str = request.POST.get('sales_end_date', '')
-        try:
-            ing_start = date.fromisoformat(ing_start_str)
-        except ValueError:
-            ing_start = date.today().replace(day=1)
-        try:
-            ing_end = date.fromisoformat(ing_end_str)
-        except ValueError:
-            ing_end = date.today()
-        try:
-            sales_start = date.fromisoformat(sales_start_str)
-        except ValueError:
-            sales_start = date.today().replace(day=1)
-        try:
-            sales_end = date.fromisoformat(sales_end_str)
-        except ValueError:
-            sales_end = date.today()
+        form = ReportDateForm(request.POST)
+        form.is_valid()
+        ing_start = form.cleaned_data['ing_start_date']
+        ing_end = form.cleaned_data['ing_end_date']
+        sales_start = form.cleaned_data['sales_start_date']
+        sales_end = form.cleaned_data['sales_end_date']
 
         # Sales summary: quantity and revenue per item
         sales = (
@@ -152,57 +144,70 @@ class ReportsView(View):
         )
         total_ingredient_cost = sum(o['total_cost'] for o in orders)
 
-        # Ingredient usage from items sold
+        # Ingredient usage from items sold (with per-item breakdown)
         ingredient_usage = defaultdict(lambda: Decimal('0'))
+        ingredient_item_usage = defaultdict(lambda: defaultdict(lambda: Decimal('0')))
         sold_items = (
             ItemSold.objects.filter(date__gte=sales_start, date__lte=sales_end)
             .values('item_id')
             .annotate(total_qty=Sum('quantity'))
         )
         for sold in sold_items:
+            item_obj = Item.objects.get(id=sold['item_id'])
             item_ingredients = ItemIngredient.objects.filter(
                 item_id=sold['item_id']
             ).select_related('ingredient')
             for ii in item_ingredients:
-                units_made = Decimal(sold['total_qty']) / ii.item.servings_per_unit
-                ingredient_usage[ii.ingredient.name] += round(ii.amount * units_made, 2)
+                if item_obj.sold_by_slice:
+                    units_made = Decimal(sold['total_qty']) / item_obj.servings_per_unit
+                else:
+                    units_made = Decimal(sold['total_qty'])
+                usage_amount = round(ii.amount * units_made, 2)
+                ingredient_usage[ii.ingredient.name] += usage_amount
+                ingredient_item_usage[ii.ingredient.name][item_obj.name] += usage_amount
 
-        # Build ingredient balance: ordered vs used vs remaining
+        # Build ingredient balance: ordered vs used vs remaining (all in base units)
         ordered_amounts = {}
         for o in orders:
             name = o['ingredient__name']
             ing = Ingredient.objects.get(name=name)
+            conversion = CONVERSION_TO_BASE[ing.measurement_type]
             ordered_amounts[name] = {
-                'ordered': o['total_qty'] * ing.measurement_amount,
-                'unit': o['ingredient__measurement_type'],
+                'ordered': o['total_qty'] * ing.measurement_amount * conversion,
+                'unit': BASE_UNIT_MAP[ing.measurement_type],
             }
 
-        ingredient_balance = []
         all_names = sorted(set(list(ordered_amounts.keys()) + list(ingredient_usage.keys())))
+        ingredient_balance = []
         for name in all_names:
             ordered = ordered_amounts.get(name, {}).get('ordered', Decimal('0'))
             unit = ordered_amounts.get(name, {}).get('unit', '')
             used = ingredient_usage.get(name, Decimal('0'))
-            remaining = ordered - used
-            ingredient_balance.append({
-                'name': name,
-                'ordered': ordered,
-                'used': used,
-                'remaining': remaining,
-                'unit': unit,
-            })
+            breakdown = []
+            if used > 0 and name in ingredient_item_usage:
+                for item_name, amount in sorted(ingredient_item_usage[name].items()):
+                    pct = round(amount / used * 100)
+                    breakdown.append(UsageBreakdown(item_name=item_name, percentage=pct))
+            ingredient_balance.append(IngredientBalance(
+                name=name,
+                ordered=ordered,
+                used=used,
+                remaining=ordered - used,
+                unit=unit,
+                breakdown=breakdown,
+            ))
 
-        return render(request, 'core/reports.html', {
-            'today': date.today().isoformat(),
-            'ing_start_date': ing_start_str,
-            'ing_end_date': ing_end_str,
-            'sales_start_date': sales_start_str,
-            'sales_end_date': sales_end_str,
-            'sales': sales,
-            'total_revenue': total_revenue,
-            'orders': orders,
-            'total_ingredient_cost': total_ingredient_cost,
-            'ingredient_balance': ingredient_balance,
-            'profit': total_revenue - total_ingredient_cost,
-            'has_report': True,
-        })
+        ctx = ReportContext(
+            today=date.today().isoformat(),
+            ing_start_date=ing_start.isoformat(),
+            ing_end_date=ing_end.isoformat(),
+            sales_start_date=sales_start.isoformat(),
+            sales_end_date=sales_end.isoformat(),
+            sales=sales,
+            total_revenue=total_revenue,
+            orders=orders,
+            total_ingredient_cost=total_ingredient_cost,
+            ingredient_balance=ingredient_balance,
+            profit=total_revenue - total_ingredient_cost,
+        )
+        return render(request, 'core/reports.html', vars(ctx))

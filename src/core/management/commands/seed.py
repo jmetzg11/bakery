@@ -147,38 +147,43 @@ class Command(BaseCommand):
             )
 
         # --- Items sold ---
+        # Quantity is in units (whole items). For sliceable items, fractional
+        # units represent slices (e.g. 0.5 cake = 4 slices of an 8-slice cake).
+        # Price is per unit so that quantity * price = revenue.
+        # chocolate_cake: 8 servings/unit, €32/unit (or €5/slice via price_per_serving)
+        # cheesecake: 10 servings/unit, €45/unit (or €4.50/slice via price_per_serving)
         self.stdout.write('Creating items sold...')
         items_sold = [
             # October 2025
-            (date(2025, 10, 2), chocolate_cake, 8, Decimal('4.00')),
+            (date(2025, 10, 2), chocolate_cake, Decimal('1'), Decimal('32.00')),       # 1 whole cake
             (date(2025, 10, 5), cupcake, 12, Decimal('3.50')),
-            (date(2025, 10, 8), cheesecake, 10, Decimal('4.50')),
+            (date(2025, 10, 8), cheesecake, Decimal('1'), Decimal('45.00')),           # 1 whole cheesecake
             (date(2025, 10, 12), cookies, 20, Decimal('2.00')),
-            (date(2025, 10, 15), chocolate_cake, 16, Decimal('4.00')),
+            (date(2025, 10, 15), chocolate_cake, Decimal('2'), Decimal('32.00')),      # 2 whole cakes
             (date(2025, 10, 20), cupcake, 8, Decimal('3.50')),
-            (date(2025, 10, 25), cheesecake, 5, Decimal('4.50')),
+            (date(2025, 10, 25), cheesecake, Decimal('0.5'), Decimal('45.00')),        # 5 slices
             # November 2025
-            (date(2025, 11, 1), chocolate_cake, 8, Decimal('4.00')),
+            (date(2025, 11, 1), chocolate_cake, Decimal('1'), Decimal('32.00')),
             (date(2025, 11, 3), cookies, 30, Decimal('2.00')),
             (date(2025, 11, 8), cupcake, 15, Decimal('3.50')),
-            (date(2025, 11, 14), cheesecake, 20, Decimal('4.50')),
-            (date(2025, 11, 18), chocolate_cake, 24, Decimal('4.00')),
+            (date(2025, 11, 14), cheesecake, Decimal('2'), Decimal('45.00')),
+            (date(2025, 11, 18), chocolate_cake, Decimal('3'), Decimal('32.00')),
             (date(2025, 11, 22), cookies, 25, Decimal('2.00')),
             (date(2025, 11, 28), cupcake, 10, Decimal('3.50')),
             # December 2025
-            (date(2025, 12, 2), chocolate_cake, 16, Decimal('4.00')),
+            (date(2025, 12, 2), chocolate_cake, Decimal('2'), Decimal('32.00')),
             (date(2025, 12, 5), cupcake, 20, Decimal('3.50')),
-            (date(2025, 12, 10), cheesecake, 15, Decimal('4.50')),
+            (date(2025, 12, 10), cheesecake, Decimal('1.5'), Decimal('45.00')),        # 15 slices
             (date(2025, 12, 14), cookies, 40, Decimal('2.00')),
-            (date(2025, 12, 18), chocolate_cake, 24, Decimal('4.00')),
-            (date(2025, 12, 22), cheesecake, 10, Decimal('4.50')),
+            (date(2025, 12, 18), chocolate_cake, Decimal('3'), Decimal('32.00')),
+            (date(2025, 12, 22), cheesecake, Decimal('1'), Decimal('45.00')),
             (date(2025, 12, 28), cupcake, 15, Decimal('3.50')),
             # January 2026
-            (date(2026, 1, 3), chocolate_cake, 8, Decimal('4.00')),
+            (date(2026, 1, 3), chocolate_cake, Decimal('1'), Decimal('32.00')),
             (date(2026, 1, 6), cookies, 35, Decimal('2.00')),
             (date(2026, 1, 10), cupcake, 18, Decimal('3.50')),
-            (date(2026, 1, 15), cheesecake, 20, Decimal('4.50')),
-            (date(2026, 1, 20), chocolate_cake, 16, Decimal('4.00')),
+            (date(2026, 1, 15), cheesecake, Decimal('2'), Decimal('45.00')),
+            (date(2026, 1, 20), chocolate_cake, Decimal('2'), Decimal('32.00')),
             (date(2026, 1, 25), cookies, 20, Decimal('2.00')),
             (date(2026, 1, 30), cupcake, 12, Decimal('3.50')),
         ]

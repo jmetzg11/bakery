@@ -1,0 +1,58 @@
+{% extends "admin/change_form.html" %}
+
+{% block admin_change_form_document_ready %}
+{{ block.super }}
+<script>
+(function() {
+    var UNIT_MAP = {{ unit_map_json }};
+    function updateUnits() {
+        document.querySelectorAll('select[name*="ingredient"]').forEach(function(sel) {
+            var row = sel.closest('tr');
+            if (!row) return;
+            var cell = row.querySelector('.field-unit_display p') || row.querySelector('.field-unit_display');
+            if (!cell) return;
+            var newText = sel.value ? (UNIT_MAP[sel.value] || '-') : '-';
+            if (cell.textContent !== newText) cell.textContent = newText;
+        });
+    }
+    updateUnits();
+    document.addEventListener('change', function(e) {
+        if (e.target.name && e.target.name.indexOf('ingredient') !== -1) updateUnits();
+    });
+    // Handle "Add another" rows - only watch for new TR additions
+    var inline = document.querySelector('.inline-group tbody');
+    if (inline) {
+        new MutationObserver(function(mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+                if (mutations[i].addedNodes.length > 0) { updateUnits(); return; }
+            }
+        }).observe(inline, { childList: true });
+    }
+
+    // Toggle servings_per_unit and price_per_serving based on sold_by_slice
+    var sliceCheckbox = document.getElementById('id_sold_by_slice');
+    var sliceFields = ['.field-servings_per_unit', '.field-price_per_serving'];
+    function toggleSliceFields(isUserAction) {
+        var show = sliceCheckbox && sliceCheckbox.checked;
+        sliceFields.forEach(function(selector) {
+            var row = document.querySelector(selector);
+            if (row) row.style.display = show ? '' : 'none';
+        });
+        if (isUserAction) {
+            var servingsInput = document.getElementById('id_servings_per_unit');
+            if (show) {
+                if (servingsInput && servingsInput.value === '1') {
+                    servingsInput.value = '';
+                }
+            } else {
+                if (servingsInput) servingsInput.value = '1';
+            }
+        }
+    }
+    if (sliceCheckbox) {
+        toggleSliceFields(false);
+        sliceCheckbox.addEventListener('change', function() { toggleSliceFields(true); });
+    }
+})();
+</script>
+{% endblock %}

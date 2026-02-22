@@ -10,5 +10,10 @@ run:
 seed:
 	cd src && uv run python manage.py seed
 
+test:
+	docker compose up -d
+	@until docker compose exec db pg_isready -U bakery > /dev/null 2>&1; do sleep 0.5; done
+	cd src && uv run python manage.py test core
+
 stop:
 	docker compose down -v

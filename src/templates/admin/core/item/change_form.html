@@ -32,16 +32,26 @@
     // Toggle servings_per_unit and price_per_serving based on sold_by_slice
     var sliceCheckbox = document.getElementById('id_sold_by_slice');
     var sliceFields = ['.field-servings_per_unit', '.field-price_per_serving'];
-    function toggleSliceFields() {
+    function toggleSliceFields(isUserAction) {
         var show = sliceCheckbox && sliceCheckbox.checked;
         sliceFields.forEach(function(selector) {
             var row = document.querySelector(selector);
             if (row) row.style.display = show ? '' : 'none';
         });
+        if (isUserAction) {
+            var servingsInput = document.getElementById('id_servings_per_unit');
+            if (show) {
+                if (servingsInput && servingsInput.value === '1') {
+                    servingsInput.value = '';
+                }
+            } else {
+                if (servingsInput) servingsInput.value = '1';
+            }
+        }
     }
     if (sliceCheckbox) {
-        toggleSliceFields();
-        sliceCheckbox.addEventListener('change', toggleSliceFields);
+        toggleSliceFields(false);
+        sliceCheckbox.addEventListener('change', function() { toggleSliceFields(true); });
     }
 })();
 </script>

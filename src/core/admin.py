@@ -33,7 +33,8 @@ class IngredientAdmin(admin.ModelAdmin):
 
 @admin.register(Item)
 class ItemAdmin(admin.ModelAdmin):
-    list_display = ('name', 'servings_per_unit', 'price_per_unit', 'price_per_serving', 'sold_by_slice')
+    list_display = ('name', 'price_per_unit', 'price_per_serving', 'servings_per_unit', 'sold_by_slice')
+    fields = ('name', 'price_per_unit', 'sold_by_slice','servings_per_unit', 'price_per_serving')
     inlines = [ItemIngredientInline]
     change_form_template = 'admin/core/item/change_form.html'
 

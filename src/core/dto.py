@@ -7,6 +7,7 @@ from django.db.models import QuerySet
 @dataclass
 class UsageBreakdown:
     item_name: str
+    amount: Decimal
     percentage: int
 
 

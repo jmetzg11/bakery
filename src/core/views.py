@@ -93,20 +93,28 @@ class SalesView(View):
     def post(self, request):
         form = SaleDateForm(request.POST)
         form.is_valid()
+        sale_date = form.cleaned_data['sale_date']
 
         for item in Item.objects.all():
-            raw_qty = request.POST.get(f'quantity_{item.id}', '0')
+            raw_unit = request.POST.get(f'unit_qty_{item.id}', '0')
+            raw_slice = request.POST.get(f'slice_qty_{item.id}', '0')
             try:
-                qty = int(raw_qty)
-            except (ValueError, TypeError):
-                qty = 0
-            if qty > 0:
-                price = item.price_per_serving if item.sold_by_slice else item.price_per_unit
+                unit_qty = Decimal(raw_unit)
+            except Exception:
+                unit_qty = Decimal('0')
+            try:
+                slice_qty = Decimal(raw_slice)
+            except Exception:
+                slice_qty = Decimal('0')
+
+            quantity = unit_qty + slice_qty / item.servings_per_unit
+            if quantity > 0:
+                revenue = unit_qty * item.price_per_unit + slice_qty * item.price_per_serving
                 ItemSold.objects.create(
-                    date=form.cleaned_data['sale_date'],
+                    date=sale_date,
                     item=item,
-                    quantity=qty,
-                    price=price,
+                    quantity=quantity,
+                    price=round(revenue / quantity, 2),
                 )
 
         return redirect('core:sales')
@@ -158,11 +166,7 @@ class ReportsView(View):
                 item_id=sold['item_id']
             ).select_related('ingredient')
             for ii in item_ingredients:
-                if item_obj.sold_by_slice:
-                    units_made = Decimal(sold['total_qty']) / item_obj.servings_per_unit
-                else:
-                    units_made = Decimal(sold['total_qty'])
-                usage_amount = round(ii.amount * units_made, 2)
+                usage_amount = round(ii.amount * Decimal(sold['total_qty']), 2)
                 ingredient_usage[ii.ingredient.name] += usage_amount
                 ingredient_item_usage[ii.ingredient.name][item_obj.name] += usage_amount
 
@@ -187,7 +191,7 @@ class ReportsView(View):
             if used > 0 and name in ingredient_item_usage:
                 for item_name, amount in sorted(ingredient_item_usage[name].items()):
                     pct = round(amount / used * 100)
-                    breakdown.append(UsageBreakdown(item_name=item_name, percentage=pct))
+                    breakdown.append(UsageBreakdown(item_name=item_name, amount=amount, percentage=pct))
             ingredient_balance.append(IngredientBalance(
                 name=name,
                 ordered=ordered,

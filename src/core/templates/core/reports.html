@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load core_filters %}
 {% block title %}Reports{% endblock %}
 {% block content %}
 <h1 class="text-2xl font-bold text-blue-900 mb-6">Reports</h1>
@@ -50,7 +51,7 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <div class="bg-white rounded-lg shadow p-4 text-center">
         <p class="text-sm text-gray-500">Total Revenue</p>
-        <p class="text-2xl font-bold text-green-700">&euro;{{ total_revenue }}</p>
+        <p class="text-2xl font-bold text-green-700">&euro;{{ total_revenue|floatformat:2 }}</p>
     </div>
     <div class="bg-white rounded-lg shadow p-4 text-center">
         <p class="text-sm text-gray-500">Ingredient Costs</p>
@@ -58,7 +59,7 @@
     </div>
     <div class="bg-white rounded-lg shadow p-4 text-center">
         <p class="text-sm text-gray-500">Profit</p>
-        <p class="text-2xl font-bold {% if profit >= 0 %}text-green-700{% else %}text-red-700{% endif %}">&euro;{{ profit }}</p>
+        <p class="text-2xl font-bold {% if profit >= 0 %}text-green-700{% else %}text-red-700{% endif %}">&euro;{{ profit|floatformat:2 }}</p>
     </div>
 </div>
 
@@ -78,8 +79,8 @@
                 {% for s in sales %}
                 <tr class="border-t border-gray-200">
                     <td class="p-3">{{ s.item__name }}</td>
-                    <td class="p-3">{{ s.total_qty }}</td>
-                    <td class="p-3">&euro;{{ s.total_revenue }}</td>
+                    <td class="p-3">{{ s.total_qty|clean_qty }}</td>
+                    <td class="p-3">&euro;{{ s.total_revenue|floatformat:2 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -124,26 +125,45 @@
             <th class="sortable text-left p-3">Ingredient</th>
             <th class="sortable text-left p-3">Ordered</th>
             <th class="sortable text-left p-3">Used</th>
-            <th class="text-left p-3">Usage Breakdown</th>
             <th class="sortable text-left p-3">Remaining</th>
             <th class="text-left p-3">Unit</th>
         </tr>
     </thead>
     <tbody>
         {% for b in ingredient_balance %}
-        <tr class="border-t border-gray-200 {% if b.remaining < 0 %}bg-red-50{% endif %}">
+        <tr class="border-t border-gray-200 cursor-pointer hover:bg-blue-50 {% if b.remaining < 0 %}bg-red-50{% endif %}"
+            onclick="let row = document.getElementById('breakdown-{{ forloop.counter }}'); row.classList.toggle('hidden');">
             <td class="p-3">{{ b.name }}</td>
-            <td class="p-3">{{ b.ordered }}</td>
-            <td class="p-3">{{ b.used }}</td>
-            <td class="p-3 text-sm">
-                {% for bd in b.breakdown %}
-                    <span class="inline-block mr-2">{{ bd.item_name }} {{ bd.percentage }}%</span>
-                {% empty %}
-                    <span class="text-gray-400">-</span>
-                {% endfor %}
-            </td>
-            <td class="p-3 {% if b.remaining < 0 %}text-red-700 font-bold{% endif %}">{{ b.remaining }}</td>
+            <td class="p-3">{{ b.ordered|clean_qty }}</td>
+            <td class="p-3">{{ b.used|clean_qty }}</td>
+            <td class="p-3 {% if b.remaining < 0 %}text-red-700 font-bold{% endif %}">{{ b.remaining|clean_qty }}</td>
             <td class="p-3">{{ b.unit }}</td>
+        </tr>
+        <tr id="breakdown-{{ forloop.counter }}" class="hidden">
+            <td colspan="5" class="p-0">
+                {% if b.breakdown %}
+                <table class="w-full bg-gray-50">
+                    <thead>
+                        <tr>
+                            <th class="text-left p-2 pl-8 text-sm text-gray-500">Item</th>
+                            <th class="text-left p-2 text-sm text-gray-500">Amount Used</th>
+                            <th class="text-left p-2 text-sm text-gray-500">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for bd in b.breakdown %}
+                        <tr class="border-t border-gray-200">
+                            <td class="p-2 pl-8 text-sm">{{ bd.item_name }}</td>
+                            <td class="p-2 text-sm">{{ bd.amount|clean_qty }}</td>
+                            <td class="p-2 text-sm">{{ bd.percentage }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <p class="p-2 pl-8 text-sm text-gray-400">No usage data</p>
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>
